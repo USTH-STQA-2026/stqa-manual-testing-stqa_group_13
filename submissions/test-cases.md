@@ -6,7 +6,7 @@
 | **Date** | 27/05/2026 |
 | **System Under Test** | https://stqa.rbc.vn (Library Management System) |
 | **Reference** | SRS v1.0 |
-| **Total Test Cases** | 30 |
+| **Total Test Cases** | 34 |
 
 ---
 
@@ -46,8 +46,9 @@
 | | No match | `"AAAAA999"` | Empty list, no error |
 | Keyword case | All lowercase | `"python"` | Same results as "Python" |
 | | All uppercase | `"PYTHON"` | Same results as "Python" |
-| Genre filter | Valid genre | `"Kinh tế"` | Only Economics books shown |
+| Genre filter | Valid genre (Vietnamese) | `"Kinh tế"` | Only Economics books shown |
 | | Non-existent genre | `"Science Fiction"` | Empty list |
+| | English genre name in EN mode | `"Technology"` | Empty list (localization bug — stored as "Công nghệ") |
 
 ### REQ-04: Borrow Book — BVA on Borrow Count + Decision Table
 
@@ -60,6 +61,7 @@
 | Nominal | 2 | Borrow | ✅ Allowed |
 | Max (at limit) | 3 | Borrow | ❌ Rejected — limit reached |
 | Max+1 (over limit) | 4+ | Borrow | ❌ Rejected (system should already have blocked at 3) |
+| Overdue escape | 3 active + 1 overdue | Borrow | ❌ Rejected — overdue books must also count toward limit |
 
 **Decision Table — Borrow Book Conditions:**
 
@@ -98,7 +100,8 @@
 | Name field | Filled | `"Nguyen Van A"` | Proceeds |
 | | Empty | `""` | Rejected |
 | Phone field | Valid digits | `0934567890` | Member created |
-| | Non-numeric | `"abcde"` | Should be rejected |
+| | Empty | `""` | Rejected with phone-specific error message |
+| | Non-numeric | `"abcde"` | Rejected with phone-specific error message |
 | Access control | Librarian | Can see Members tab | ✅ |
 | | Member | No Members tab | ✅ Restricted |
 
@@ -145,6 +148,7 @@
 | TC-03-02 | Search returns empty for non-existent keyword | Logged in, "Sách" tab | 1. Type non-existent keyword. | `"AAAAA999"` | Message "Không tìm thấy sách nào." List is empty. No crash. | EP |
 | TC-03-03 | Filter by genre shows correct subset | Logged in, "Sách" tab | 1. Type genre name in filter field. | `"Kinh tế"` | Only Economics books shown (e.g., BOOK007, BOOK014, BOOK015). | EP |
 | TC-03-04 | Search by author name returns correct results | Logged in, "Sách" tab | 1. Type author name in search box. | `"Lê Thị Hoa"` | BOOK003 "Kiểm thử phần mềm nhập môn" by Lê Thị Hoa displayed. No unrelated books. | EP |
+| TC-03-05 | Filter by English category name returns no results (i18n mismatch) | Logged in, EN mode, "Books" tab | 1. Set UI to English. 2. Click category filter field. 3. Type `Technology`. | `"Technology"` (EN mode) | **FAIL — DEFECT-07:** "No books found." even though books with category "Công nghệ" exist. The hint "e.g. Technology" is misleading. | EP |
 
 ### REQ-04: Borrow Book (6 TCs)
 
@@ -156,6 +160,7 @@
 | TC-04-04 | Borrow 4th book — exceeds limit (BVA: over limit) | MEM006 has 3 active borrows | 1. Click "+" next to BOOK010. 2. Confirm in dialog. | Book: BOOK010, Member: MEM006 | **System rejects borrow.** Error: "Bạn đã đạt giới hạn 3 sách." BOOK010 remains "Có sẵn". | BVA, R2 |
 | TC-04-05 | Suspended member cannot borrow | Logged in as MEM004 (`cu.le@email.com`) | 1. Navigate to "Sách" tab. 2. Observe "+" button on available books. | Member: MEM004 (Tạm ngưng) | No "+" borrow button visible / clickable for any book. Cannot initiate borrow. | EP, R3 |
 | TC-04-06 | Cannot borrow a book that is already borrowed | Logged in as any active member | 1. Locate BOOK003 (status: "Đang mượn"). 2. Observe borrow button. | Book: BOOK003 | No "+" button shown for BOOK003. Cannot initiate borrow dialog. | EP, R4 |
+| TC-04-07 | Member with overdue book — borrow limit bypass check | MEM006 logged in. MEM006 has 3 "Đang mượn" (BR006/07/08) + 1 "Quá hạn" (BR003). | 1. As Librarian, run "Kiểm tra sách quá hạn" to set BR003 → "Quá hạn". 2. Log in as MEM006. 3. Attempt to borrow BOOK009 (Available). 4. Confirm dialog. | Member: MEM006, Book: BOOK009 | **FAIL — DEFECT-08:** System shows borrow dialog and confirms "Book borrowed successfully!" MEM006 now holds 4 active + 1 overdue. Overdue books should count toward the 3-book limit. | BVA, EP |
 
 ### REQ-05: Return Book (2 TCs)
 
@@ -180,6 +185,8 @@
 | TC-07-03 | Add member — duplicate email | Logged in as Librarian | 1. Enter email already used by existing member. 2. Fill other fields. 3. Submit. | Email: `ba.nguyen@email.com` (existing: MEM002) | System rejects. Error should clearly state the email is already registered — NOT an "invalid email" message. | EP |
 | TC-07-04 | Add member — email without "@" symbol | Logged in as Librarian | 1. Enter email missing "@". 2. Other fields valid. 3. Submit. | Email: `usernodomain.com`, Name: `No At Sign`, Phone: `0912111222` | System rejects with validation error. No member created. | EP, BVA |
 | TC-07-05 | Member account cannot access member management | Logged in as `biet.hoang@email.com` (MEM006) | 1. Observe AppBar and navigation after login. | — | No Add Member button in AppBar. No "Thành viên" (Members) nav tab. Role-based restriction enforced. | EP |
+| TC-07-06 | Add member — empty phone number field | Logged in as Librarian, Add Member form open | 1. Fill Name and Email with valid values. 2. Leave Phone Number blank. 3. Submit. | Name: `Test Empty Phone`, Email: `emptyphone@test.com`, Phone: `""` | **FAIL — DEFECT-05:** Error "Email không hợp lệ." displayed for empty phone field. Expected: phone-specific error message. | EP |
+| TC-07-07 | Add member — non-numeric phone number | Logged in as Librarian, Add Member form open | 1. Fill Name and Email validly. 2. Enter `abcdefghij` in Phone Number. 3. Submit. | Name: `Test Bad Phone`, Email: `badphone@test.com`, Phone: `abcdefghij` | **FAIL — DEFECT-06:** Error "Email không hợp lệ." displayed for non-numeric phone. Expected: "Phone number must contain only digits." | EP |
 
 ### REQ-08: Borrow Record Lookup (3 TCs)
 
@@ -197,13 +204,13 @@
 |--------------|-----|--------|-------------|------------|
 | User Login | 5 | TC-01-01 to TC-01-05 | REQ-01 | EP |
 | View Book List | 3 | TC-02-01 to TC-02-03 | REQ-02 | EP |
-| Search & Filter | 4 | TC-03-01 to TC-03-04 | REQ-03 | EP |
-| Borrow Book | 6 | TC-04-01 to TC-04-06 | REQ-04 | EP, BVA, Decision Table |
+| Search & Filter | 5 | TC-03-01 to TC-03-05 | REQ-03 | EP |
+| Borrow Book | 7 | TC-04-01 to TC-04-07 | REQ-04 | EP, BVA, Decision Table |
 | Return Book | 2 | TC-05-01 to TC-05-02 | REQ-05 | EP |
 | Overdue Handling | 2 | TC-06-01 to TC-06-02 | REQ-06 | EP |
-| Member Management | 5 | TC-07-01 to TC-07-05 | REQ-07 | EP, BVA |
+| Member Management | 7 | TC-07-01 to TC-07-07 | REQ-07 | EP, BVA |
 | Borrow Record Lookup | 3 | TC-08-01 to TC-08-03 | REQ-08 | EP |
-| **Total** | **30** | **TC-01-01 – TC-08-03** | **8 / 8 REQ** | **EP + BVA + Decision Table** |
+| **Total** | **34** | **TC-01-01 – TC-08-03** | **8 / 8 REQ** | **EP + BVA + Decision Table** |
 
 ### Technique Justification
 

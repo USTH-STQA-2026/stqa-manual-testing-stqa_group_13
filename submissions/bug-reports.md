@@ -17,6 +17,10 @@
 | DEFECT-02 | Email address without dot in domain is accepted | High | P1 | Open | TC-07-02 |
 | DEFECT-03 | No overdue notification shown when returning a late book | Medium | P2 | Open | TC-05-02 |
 | DEFECT-04 | Duplicate email shows wrong error: "Email không hợp lệ." | Low | P3 | Open | TC-07-03 |
+| DEFECT-05 | Empty phone field shows error "Email không hợp lệ." (wrong field) | Medium | P2 | Open | TC-07-06 |
+| DEFECT-06 | Non-numeric phone input shows error "Email không hợp lệ." (wrong field) | Medium | P2 | Open | TC-07-07 |
+| DEFECT-07 | Category filter hint uses English names but stored values are Vietnamese | Low | P3 | Open | TC-03-05 |
+| DEFECT-08 | Overdue books excluded from borrow limit — member can exceed 3-book cap | High | P1 | Open | TC-04-07 |
 
 ---
 
@@ -205,11 +209,197 @@ Rejection with misleading message: **"Email không hợp lệ."** — implies th
 
 ---
 
+---
+
+## DEFECT-05 — Empty Phone Field Shows Email Error
+
+| Field | Detail |
+|-------|--------|
+| **ID** | DEFECT-05 |
+| **Title** | Submitting a blank phone number field shows error "Email không hợp lệ." |
+| **Severity** | Medium |
+| **Priority** | P2 (Next sprint) |
+| **Status** | Open |
+| **REQ** | REQ-07 |
+| **Found in TC** | TC-07-06 |
+| **Date Found** | 27/05/2026 |
+
+### Description
+
+When a librarian submits the Add Member form with an empty phone number field, the system returns the error message "Email không hợp lệ." ("Invalid email format"). This message is completely unrelated to the field that failed validation — the error originates from phone validation but borrows the email error string, indicating that all form validation errors funnel through a single generic error handler.
+
+### Steps to Reproduce
+
+1. Log in as Librarian.
+2. Open the Add Member form.
+3. Fill all required fields **except** Phone Number (leave it blank).
+4. Click Submit.
+
+### Expected
+
+A phone-specific error message such as *"Phone number is required."* or *"Vui lòng nhập số điện thoại."*
+
+### Actual
+
+Error message displayed: **"Email không hợp lệ."** — an email-related error shown for a completely unrelated phone field.
+
+### Impact
+
+- Confusing user experience: librarians believe the email field is wrong and waste time re-checking it.
+- Indicates a systematic error-handling failure — all field errors are mapped to a single catch-all string.
+- Root cause shared with DEFECT-06.
+
+### Evidence
+
+![DEFECT-05 Evidence](evidence/screenshot_DEFECT05.png)
+
+---
+
+## DEFECT-06 — Non-Numeric Phone Input Shows Email Error
+
+| Field | Detail |
+|-------|--------|
+| **ID** | DEFECT-06 |
+| **Title** | Entering non-numeric text in phone field shows error "Email không hợp lệ." |
+| **Severity** | Medium |
+| **Priority** | P2 (Next sprint) |
+| **Status** | Open |
+| **REQ** | REQ-07 |
+| **Found in TC** | TC-07-07 |
+| **Date Found** | 27/05/2026 |
+
+### Description
+
+When a librarian enters a non-numeric string (e.g., `abcdefghij`) in the Phone Number field and submits the form, the system returns "Email không hợp lệ." This is the same incorrect error shown for DEFECT-05. Phone validation is implemented but the resulting error message is incorrect — it always returns the email error string regardless of which field failed.
+
+### Steps to Reproduce
+
+1. Log in as Librarian.
+2. Open the Add Member form.
+3. Enter a valid name and email.
+4. Enter `abcdefghij` in the Phone Number field.
+5. Click Submit.
+
+### Expected
+
+Error message: *"Phone number must contain digits only."* or equivalent.
+
+### Actual
+
+Error message: **"Email không hợp lệ."** — an email validation message displayed for a phone format error.
+
+### Impact
+
+- Same root cause as DEFECT-05: all validation errors use a single shared error string.
+- Users cannot determine which field is invalid from the error message alone.
+- Systematic fix needed: each validation rule must emit a field-specific message.
+
+### Evidence
+
+![DEFECT-06 Evidence](evidence/screenshot_DEFECT06.png)
+
+---
+
+## DEFECT-07 — Category Filter Hint Uses English Names, No Match to Vietnamese Data
+
+| Field | Detail |
+|-------|--------|
+| **ID** | DEFECT-07 |
+| **Title** | Category filter placeholder shows English examples (e.g., "Technology") but stored categories are Vietnamese — typing English returns no results |
+| **Severity** | Low |
+| **Priority** | P3 (Nice to fix) |
+| **Status** | Open |
+| **REQ** | REQ-03 |
+| **Found in TC** | TC-03-05 |
+| **Date Found** | 27/05/2026 |
+
+### Description
+
+The book list filter field displays a placeholder hint: *"Filter by category (e.g. Technology, Economics...)"*. This implies that English category names are valid inputs. However, the underlying book records store categories in Vietnamese (e.g., "Công nghệ", "Kinh tế"). When a user (member or librarian) types "Technology" in EN mode, the system returns "No books found." even though books in the "Công nghệ" (Technology) category exist. The UI hint is misleading.
+
+### Steps to Reproduce
+
+1. Log in as any user.
+2. Ensure the UI language is set to English (EN mode).
+3. Click the "Filter by category" input field.
+4. Observe the placeholder hint text.
+5. Type `Technology` and observe the result.
+
+### Expected
+
+Either: the filter accepts English category names and translates them to Vietnamese for database lookup; or: the placeholder should show the actual Vietnamese category names (e.g., "e.g. Công nghệ, Kinh tế...").
+
+### Actual
+
+Typing `Technology` shows **"No books found."** The hint text promises English-based filtering that the system does not support.
+
+### Impact
+
+- EN-mode users cannot discover or filter books by category without switching to Vietnamese.
+- Misleading UX: the placeholder creates a false expectation of i18n support.
+
+### Evidence
+
+![DEFECT-07 Evidence](evidence/screenshot_DEFECT07.png)
+
+---
+
+## DEFECT-08 — Overdue Books Excluded from Borrow Limit Count
+
+| Field | Detail |
+|-------|--------|
+| **ID** | DEFECT-08 |
+| **Title** | Borrow limit check excludes overdue ("Quá hạn") records — member with overdue book can borrow beyond the 3-book cap |
+| **Severity** | High |
+| **Priority** | P1 (Fix immediately) |
+| **Status** | Open |
+| **REQ** | REQ-04 |
+| **Found in TC** | TC-04-07 |
+| **Date Found** | 27/05/2026 |
+
+### Description
+
+REQ-04 states that a member may hold at most 3 books at any time. The system enforces this by counting records with status "Đang mượn" (Active Borrow). However, records with status "Quá hạn" (Overdue) are NOT counted. Overdue records represent books that have not been returned — they are still physically held by the member. Excluding them from the limit count allows a member to exploit overdue status to borrow additional books beyond the 3-book cap.
+
+**Reproduction scenario:** MEM006 has BR003 (status: Quá hạn) + BR006, BR007, BR008 (status: Đang mượn). The system counts only 3 active borrows, allows a 4th borrow request (BOOK009), and creates BR009. MEM006 now holds 5 unreturned books.
+
+### Steps to Reproduce
+
+1. Log in as Librarian.
+2. Navigate to Borrow / Return. Click "Kiểm tra sách quá hạn" to flag overdue records. Verify MEM006 has BR003 as "Quá hạn" and BR006/BR007/BR008 as "Đang mượn".
+3. Log out. Log in as MEM006 (`biet.hoang@email.com` / `Member@123`).
+4. Navigate to Books. Attempt to borrow **BOOK009** (Nhập môn lập trình Python — Available).
+5. Observe the confirmation dialog and confirm the borrow.
+
+### Expected
+
+Step 4 should be rejected. The system should count all unreturned books (including "Quá hạn") toward the limit. Since MEM006 holds 4 unreturned books (3 Đang mượn + 1 Quá hạn), any new borrow should be blocked.
+
+### Actual
+
+The system shows the **"Confirm borrowing"** dialog. After confirming, the toast **"Book borrowed successfully!"** appears. MEM006 now holds 5 unreturned books, far exceeding the 3-book cap.
+
+### Impact
+
+- Extends the severity of DEFECT-01: not only is the count limit off-by-one, overdue records also escape counting entirely.
+- A member can accumulate unlimited books by deliberately never returning overdue books.
+- Combined with DEFECT-01, the borrow limit mechanism is effectively non-functional.
+
+### Evidence
+
+![DEFECT-08 Evidence](evidence/screenshot_DEFECT08.png)
+
+---
+
 ## Root Cause Summary
 
 | Defect ID | Root Cause | Component |
 |-----------|-----------|-----------|
-| DEFECT-01 | No server-side borrow count validation before creating borrow record | Backend / Business Logic |
+| DEFECT-01 | Borrow count check uses `count > 3` instead of `count >= 3` (off-by-one) | Backend / Business Logic |
 | DEFECT-02 | Email regex only checks for `@` presence; does not require `.` in domain segment | Backend / Input Validation |
 | DEFECT-03 | Return handler does not inspect overdue status before generating success notification | Backend / Business Logic |
 | DEFECT-04 | Database unique-constraint violation is mapped to same error string as format validation failure | Backend / Error Handling |
+| DEFECT-05 | All form field validation errors share a single generic error string ("Email không hợp lệ.") | Backend / Error Handling |
+| DEFECT-06 | Same root cause as DEFECT-05 — shared catch-all error string for all validation failures | Backend / Error Handling |
+| DEFECT-07 | Category filter performs exact-match on stored Vietnamese strings; no translation layer | Frontend / i18n |
+| DEFECT-08 | Borrow limit query filters by `status = 'Đang mượn'` only, excluding "Quá hạn" records | Backend / Business Logic |

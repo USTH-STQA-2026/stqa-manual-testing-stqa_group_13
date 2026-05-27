@@ -7,7 +7,7 @@
 | **Tester** | Group 13 |
 | **System Under Test** | https://stqa.rbc.vn |
 | **Browser** | Chrome (Flutter Web — CanvasKit rendering) |
-| **Reference** | test-cases.md (30 TCs) |
+| **Reference** | test-cases.md (34 TCs) |
 
 ---
 
@@ -15,12 +15,12 @@
 
 | Metric | Value |
 |--------|-------|
-| Total Test Cases Executed | 30 |
+| Total Test Cases Executed | 34 |
 | **PASS** | **26** |
-| **FAIL** | **4** |
+| **FAIL** | **8** |
 | Blocked | 0 |
 | Not Run | 0 |
-| **Pass Rate** | **86.7%** |
+| **Pass Rate** | **76.5%** |
 
 ---
 
@@ -52,6 +52,7 @@
 | TC-03-02 | Search — no results | `"AAAAA999"` | Empty list, "no results" message | "Không tìm thấy sách nào." displayed. Empty list. No crash. | **PASS** | — |
 | TC-03-03 | Filter by genre | `"Kinh tế"` | Only Economics books | BOOK007, BOOK014, BOOK015 shown. All have genre "Kinh tế". No other genre books visible. | **PASS** | — |
 | TC-03-04 | Search by author name | `"Lê Thị Hoa"` | Books by Lê Thị Hoa displayed | BOOK003 "Kiểm thử phần mềm nhập môn" displayed. No irrelevant books shown. | **PASS** | — |
+| TC-03-05 | Filter by English category in EN mode | `"Technology"` (EN mode) | "Technology" books displayed | **UI set to EN mode. Typed "Technology" in category filter. Result: "No books found."** Books with category "Công nghệ" exist but are not matched. The placeholder hint "e.g. Technology" implies English filtering is supported, but it is not. | **FAIL** | DEFECT-07 |
 
 ### REQ-04: Borrow Book
 
@@ -63,6 +64,7 @@
 | TC-04-04 | Borrow 4th book — over limit | BOOK010 / MEM006 | **Rejected.** Error shown. BOOK010 stays "Có sẵn". | **System accepted the borrow request.** Toast "Mượn sách thành công!" shown. BOOK010 changed to "Đang mượn". MEM006 now has 4 active borrows — exceeds limit. | **FAIL** | DEFECT-01 |
 | TC-04-05 | Suspended member cannot borrow | MEM004 (`cu.le@email.com`) | No "+" button shown | After login as MEM004: "+" borrow button not rendered for any book. Cannot initiate borrow. Suspension is enforced at UI level. | **PASS** | — |
 | TC-04-06 | Cannot borrow already-borrowed book | BOOK003 (status: Borrowed) | No "+" button for BOOK003 | BOOK003 displayed with "Đang mượn" badge. No "+" button visible. Cannot open borrow dialog. | **PASS** | — |
+| TC-04-07 | Member with overdue book exceeds borrow limit | MEM006: 3 "Đang mượn" + 1 "Quá hạn" (BR003); attempt BOOK009 | **Rejected.** Overdue books count toward limit. | **Librarian ran "Kiểm tra sách quá hạn" → BR003 flagged as "Quá hạn". Member list shows MEM006 "Đang mượn: 3 sách". As MEM006, tapped "+" on BOOK009. Borrow dialog appeared. Clicked Borrow. Toast: "Book borrowed successfully!" — system allowed a 4th active borrow despite 4 total unreturned books.** | **FAIL** | DEFECT-08 |
 
 ### REQ-05: Return Book
 
@@ -87,6 +89,8 @@
 | TC-07-03 | Add member — duplicate email | Email: `ba.nguyen@email.com` (existing) | Rejected. Clear "already exists" error. | System rejected submission but displayed: **"Email không hợp lệ."** This message implies a format error, not a duplicate — misleading to the user. | **FAIL** | DEFECT-04 |
 | TC-07-04 | Add member — email missing "@" | Email: `usernodomain.com` | Rejected. Validation error. | System rejected and displayed "Email không hợp lệ." No member created. The missing "@" is detected by client-side validation correctly. | **PASS** | — |
 | TC-07-05 | Member cannot access member management | MEM006 logged in | No Add Member button. No Members tab. | After member login: no "Thành viên" tab in navigation. No add-member icon in AppBar. Role restriction enforced correctly. | **PASS** | — |
+| TC-07-06 | Add member — empty phone field | Name: `Test Empty Phone`, Email: `emptyphone@test.com`, Phone: `""` | Phone-specific error message | **Left Phone Number blank. Clicked Submit. Error displayed: "Email không hợp lệ." — an email error for a phone field.** No phone-specific message shown. | **FAIL** | DEFECT-05 |
+| TC-07-07 | Add member — non-numeric phone | Name: `Test Bad Phone`, Email: `badphone@test.com`, Phone: `abcdefghij` | "Phone must contain digits only" or equivalent | **Entered "abcdefghij" in phone field. Clicked Submit. Error displayed: "Email không hợp lệ." — the same incorrect error as TC-07-06. System rejects input but uses wrong error message.** | **FAIL** | DEFECT-06 |
 
 ### REQ-08: Borrow Record Lookup
 
@@ -106,6 +110,10 @@
 | DEFECT-02 | High | TC-07-02 | Email without dot-in-domain (e.g., `user@nodot`) accepted and stored |
 | DEFECT-03 | Medium | TC-05-02 | No overdue warning displayed when a librarian returns an overdue book |
 | DEFECT-04 | Low | TC-07-03 | Duplicate email rejection shows "Email không hợp lệ." instead of "Email already registered" |
+| DEFECT-05 | Medium | TC-07-06 | Empty phone field shows "Email không hợp lệ." — wrong field error message |
+| DEFECT-06 | Medium | TC-07-07 | Non-numeric phone shows "Email không hợp lệ." — wrong field error message |
+| DEFECT-07 | Low | TC-03-05 | English category names in filter produce no results — placeholder hint is misleading |
+| DEFECT-08 | High | TC-04-07 | Overdue books excluded from borrow count — member can exceed 3-book limit |
 
 ---
 
@@ -115,10 +123,10 @@
 |-----|---------|------|------|--------|
 | REQ-01 | 5 | 5 | 0 | ✅ All Pass |
 | REQ-02 | 3 | 3 | 0 | ✅ All Pass |
-| REQ-03 | 4 | 4 | 0 | ✅ All Pass |
-| REQ-04 | 6 | 5 | 1 (TC-04-04) | ⚠️ Defect found |
-| REQ-05 | 2 | 1 | 1 (TC-05-02) | ⚠️ Defect found |
+| REQ-03 | 5 | 4 | 1 (TC-03-05) | ⚠️ DEFECT-07 |
+| REQ-04 | 7 | 5 | 2 (TC-04-04, TC-04-07) | ⚠️ DEFECT-01, DEFECT-08 |
+| REQ-05 | 2 | 1 | 1 (TC-05-02) | ⚠️ DEFECT-03 |
 | REQ-06 | 2 | 2 | 0 | ✅ All Pass |
-| REQ-07 | 5 | 3 | 2 (TC-07-02, TC-07-03) | ⚠️ Defects found |
+| REQ-07 | 7 | 3 | 4 (TC-07-02, 03, 06, 07) | ⚠️ DEFECT-02, 04, 05, 06 |
 | REQ-08 | 3 | 3 | 0 | ✅ All Pass |
-| **Total** | **30** | **26** | **4** | **8/8 REQ covered** |
+| **Total** | **34** | **26** | **8** | **8/8 REQ covered** |
